@@ -1,6 +1,6 @@
 # NoteBetter Studio
 
-English | [日本語](https://github.com/lineside0418/NoteBetter-Studio/README.md)
+English | [日本語](https://github.com/lineside0418/Notebetter-Studio?tab=readme-ov-file)
 
 **NoteBetter Studio** is a standalone web-based tool designed to easily create configuration files for the Minecraft Fabric Mod "**NoteBetter**".
 This tool allows you to visually manage instruments, pitch, and volume for block interactions, automatically generating the necessary JSON configuration files.

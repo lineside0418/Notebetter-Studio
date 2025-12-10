@@ -1,6 +1,6 @@
 # NoteBetter Studio
 
-[English](https://github.com/lineside0418/NoteBetter-Studio/README_EN.md) | 日本語
+[English](https://github.com/lineside0418/Notebetter-Studio/blob/main/README_EN.md) | 日本語
 
 **NoteBetter Studio** は、Minecraft Fabric Mod "**NoteBetter**" のための設定ファイルを、ブラウザ上で直感的かつ簡単に作成できるツールです。
 ブロックを叩いた際の楽器（Instrument）、音程（Pitch）、音量（Volume）を視覚的に管理し、必要なJSONファイルを自動生成します。
