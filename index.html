@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoteBetter Studio</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        code, pre, .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom Scrollbar for dark mode compatibility */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.5);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.8);
+        }
+        
+        .rendering-pixelated {
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body class="bg-[#F2F2F7] dark:bg-[#0f0f11] text-[#1D1D1F] dark:text-white transition-colors duration-500">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // --- React Hooks & Utilities ---
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        // --- Icon System (Embedded) ---
+        // 外部ライブラリ依存を排除し、必要なアイコンを直接SVGコンポーネントとして定義します。
+        // これにより、CDNのバージョン変更や読み込みエラーによるクラッシュを防ぎます。
+
+        const Icon = ({ size = 24, color = "currentColor", strokeWidth = 2, className = "", children, ...props }) => (
+            <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width={size} 
+                height={size} 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke={color} 
+                strokeWidth={strokeWidth} 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className={`lucide ${className}`}
+                {...props}
+            >
+                {children}
+            </svg>
+        );
+
+        const Icons = {
+            Search: (p) => <Icon {...p}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></Icon>,
+            Settings: (p) => <Icon {...p}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.72l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></Icon>,
+            Grid: (p) => <Icon {...p}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></Icon>,
+            List: (p) => <Icon {...p}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></Icon>,
+            Download: (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></Icon>,
+            Plus: (p) => <Icon {...p}><path d="M5 12h14"/><path d="M12 5v14"/></Icon>,
+            Trash2: (p) => <Icon {...p}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></Icon>,
+            X: (p) => <Icon {...p}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></Icon>,
+            Check: (p) => <Icon {...p}><path d="M20 6 9 17l-5-5"/></Icon>,
+            Music: (p) => <Icon {...p}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></Icon>,
+            Box: (p) => <Icon {...p}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" x2="12" y1="22.08" y2="12"/></Icon>,
+            Layers: (p) => <Icon {...p}><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></Icon>,
+            Moon: (p) => <Icon {...p}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></Icon>,
+            Sun: (p) => <Icon {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></Icon>,
+            ChevronRight: (p) => <Icon {...p}><path d="m9 18 6-6-6-6"/></Icon>,
+            Volume2: (p) => <Icon {...p}><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></Icon>,
+            Copy: (p) => <Icon {...p}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></Icon>,
+            FileJson: (p) => <Icon {...p}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 1-1 1 1 1 0 0 1 1 1v1a1 1 0 0 0 1 1"/><path d="M14 18a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-1a1 1 0 0 0-1-1"/></Icon>,
+            Upload: (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></Icon>,
+            ArrowRight: (p) => <Icon {...p}><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></Icon>,
+            Terminal: (p) => <Icon {...p}><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></Icon>,
+            Save: (p) => <Icon {...p}><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8V3"/></Icon>,
+            CheckSquare: (p) => <Icon {...p}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></Icon>,
+            Globe: (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></Icon>,
+            Zap: (p) => <Icon {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Icon>
+        };
+
+        // Destructure icons used in the app
+        const { 
+            Search, Settings, Grid, List: ListIcon, Download, Plus, Trash2, X, Check, 
+            Music, Box, Layers, Moon, Sun, ChevronRight, Volume2, Copy, FileJson, 
+            Upload, ArrowRight, Terminal, Save, CheckSquare, Globe, Zap 
+        } = Icons;
+
+
+        // --- Application Code Starts Here ---
+
+        // --- Localization ---
+        const TRANSLATIONS = {
+          en: {
+            title: "NoteBetter",
+            subtitle: "Configurator",
+            new_project: "New Project",
+            continue_session: "Continue Session",
+            or_import: "Or Import",
+            browse_json: "Click to browse .json",
+            export: "Export",
+            add_block: "Add Block",
+            search_blocks: "Search blocks...",
+            no_blocks: "No blocks configured",
+            tap_plus: "Tap the + button to start adding your first block",
+            inspector: "Inspector",
+            editing_multiple: "Editing {n} Blocks",
+            batch_edit: "Batch Edit",
+            apply_changes: "Apply to All",
+            remove_block: "Remove Block",
+            remove_all: "Remove All",
+            sound_event: "Sound Event",
+            pitch: "Pitch",
+            volume: "Volume",
+            custom_sound: "Custom Sound",
+            custom_sound_desc: "Include in resource pack export",
+            custom_sound_badge: "Custom",
+            export_config: "Copy Config",
+            download_config: "Download Config",
+            export_sounds: "Copy sounds.json",
+            download_sounds: "Download sounds.json",
+            instructions: "Instructions",
+            step1: "Only sounds marked as <b>Custom Sound</b> are included here.",
+            step2: "Create structure: <code>assets/minecraft/sounds/</code>",
+            step3: "Place <code>sounds.json</code> in <code>assets/minecraft/</code>.",
+            step4: "Place .ogg files in <code>sounds/</code> folder matching your IDs.",
+            process_complete: "PROCESS COMPLETE.",
+            waiting_input: "WAITING FOR USER INPUT...",
+            initializing: "Initializing export sequence...",
+            validating: "Validating block definitions...",
+            found_entries: "Found {n} mapping entries.",
+            serializing: "Serializing to JSON...",
+            added: "Added {name}",
+            removed: "Removed {n} blocks",
+            imported: "Imported {n} blocks",
+            invalid_json: "Invalid JSON file",
+            copy: "Copy"
+          },
+          ja: {
+            title: "NoteBetter",
+            subtitle: "コンフィギュレーター",
+            new_project: "新規プロジェクト",
+            continue_session: "続きから",
+            or_import: "またはインポート",
+            browse_json: "クリックして .json を選択",
+            export: "書き出し",
+            add_block: "ブロックを追加",
+            search_blocks: "ブロックを検索...",
+            no_blocks: "設定されたブロックはありません",
+            tap_plus: "+ ボタンを押してブロックを追加してください",
+            inspector: "インスペクター",
+            editing_multiple: "{n} 個のブロックを編集中",
+            batch_edit: "一括編集",
+            apply_changes: "全てに適用",
+            remove_block: "削除",
+            remove_all: "全て削除",
+            sound_event: "サウンドイベント",
+            pitch: "ピッチ (高さ)",
+            volume: "ボリューム (音量)",
+            custom_sound: "カスタムサウンド",
+            custom_sound_desc: "リソースパック書き出しに含める",
+            custom_sound_badge: "カスタム",
+            export_config: "設定をコピー",
+            download_config: "設定をDL",
+            export_sounds: "sounds.jsonをコピー",
+            download_sounds: "sounds.jsonをDL",
+            instructions: "手順",
+            step1: "<b>カスタムサウンド</b>としてマークされた音源のみが含まれます。",
+            step2: "フォルダ構成を作成: <code>assets/minecraft/sounds/</code>",
+            step3: "<code>sounds.json</code> を <code>assets/minecraft/</code> に配置。",
+            step4: ".oggファイルをIDに合わせて <code>sounds/</code> フォルダに配置。",
+            process_complete: "処理完了。",
+            waiting_input: "ユーザー入力を待機中...",
+            initializing: "エクスポートシーケンスを開始...",
+            validating: "ブロック定義を検証中...",
+            found_entries: "{n} 件のエントリーを検出。",
+            serializing: "JSONにシリアライズ中...",
+            added: "{name} を追加しました",
+            removed: "{n} 個のブロックを削除しました",
+            imported: "{n} 個のブロックを読み込みました",
+            invalid_json: "無効なJSONファイルです",
+            copy: "コピー"
+          }
+        };
+
+        // --- Assets & Data ---
+
+        const ASSET_BASE = "https://raw.githubusercontent.com/misode/mcmeta/assets/assets/minecraft/textures/block";
+
+        // Texture Mapping
+        const TEXTURE_MAP = {
+          "grass_block": "grass_block_side",
+          "oak_log": "oak_log",
+          "spruce_log": "spruce_log",
+          "birch_log": "birch_log",
+          "jungle_log": "jungle_log",
+          "acacia_log": "acacia_log",
+          "dark_oak_log": "dark_oak_log",
+          "mangrove_log": "mangrove_log",
+          "cherry_log": "cherry_log",
+          "crimson_stem": "crimson_stem",
+          "warped_stem": "warped_stem",
+          "tnt": "tnt_side",
+          "pumpkin": "pumpkin_side",
+          "carved_pumpkin": "carved_pumpkin",
+          "jack_o_lantern": "jack_o_lantern",
+          "melon": "melon_side",
+          "furnace": "furnace_front",
+          "blast_furnace": "blast_furnace_front",
+          "smoker": "smoker_front",
+          "dispenser": "dispenser_front",
+          "dropper": "dropper_front",
+          "observer": "observer_front",
+          "piston": "piston_side",
+          "sticky_piston": "piston_side",
+          "crafting_table": "crafting_table_front",
+          "chest": "chest_inventory", 
+          "ender_chest": "ender_chest_inventory",
+          "lectern": "lectern_top",
+          "barrel": "barrel_side",
+          "bookshelf": "bookshelf",
+          "chiseled_bookshelf": "chiseled_bookshelf_empty",
+          "loom": "loom_front",
+          "smithing_table": "smithing_table_front",
+          "cartography_table": "cartography_table_side3",
+          "fletching_table": "fletching_table_side1",
+          "respawn_anchor": "respawn_anchor_side0",
+          "stonecutter": "stonecutter_side",
+          "beehive": "beehive_front",
+          "bee_nest": "bee_nest_front",
+          "ancient_debris": "ancient_debris_side",
+          "basalt": "basalt_side",
+          "polished_basalt": "polished_basalt_side",
+          "deepslate": "deepslate",
+          "quartz_pillar": "quartz_pillar",
+          "hay_block": "hay_block_side",
+          "purpur_pillar": "purpur_pillar",
+          "bone_block": "bone_block_side",
+          "magma_block": "magma",
+          "mycelium": "mycelium_side",
+          "podzol": "podzol_side",
+          "vermud": "mud" 
+        };
+
+        // Helper to get texture URL
+        const getTextureUrl = (blockName) => {
+          let textureName = TEXTURE_MAP[blockName] || blockName;
+          // Fallbacks for common patterns
+          if (blockName.endsWith("_log") && !TEXTURE_MAP[blockName]) textureName = blockName;
+          if (blockName.includes("grass_block")) textureName = "grass_block_side";
+          return `${ASSET_BASE}/${textureName}.png`;
+        };
+
+        const BLOCK_DATABASE = [
+          "grass_block", "dirt", "coarse_dirt", "podzol", "mycelium", "dirt_path", "farmland", "mud", "packed_mud", "mud_bricks",
+          "stone", "cobblestone", "mossy_cobblestone", "smooth_stone", "stone_bricks", "mossy_stone_bricks", "cracked_stone_bricks", "chiseled_stone_bricks",
+          "granite", "polished_granite", "diorite", "polished_diorite", "andesite", "polished_andesite",
+          "deepslate", "cobbled_deepslate", "polished_deepslate", "deepslate_bricks", "deepslate_tiles", "reinforced_deepslate",
+          "tuff", "calcite", "dripstone_block", "obsidian", "crying_obsidian", "bedrock",
+          "sand", "red_sand", "gravel", "clay", "sandstone", "chiseled_sandstone", "cut_sandstone", "red_sandstone", "chiseled_red_sandstone", "cut_red_sandstone",
+          "ice", "packed_ice", "blue_ice", "snow_block", "powder_snow",
+          "oak_planks", "spruce_planks", "birch_planks", "jungle_planks", "acacia_planks", "dark_oak_planks", "mangrove_planks", "cherry_planks", "bamboo_planks", "crimson_planks", "warped_planks",
+          "oak_log", "spruce_log", "birch_log", "jungle_log", "acacia_log", "dark_oak_log", "mangrove_log", "cherry_log", "bamboo_block", "crimson_stem", "warped_stem",
+          "coal_ore", "deepslate_coal_ore", "coal_block",
+          "iron_ore", "deepslate_iron_ore", "raw_iron_block", "iron_block",
+          "copper_ore", "deepslate_copper_ore", "raw_copper_block", "copper_block",
+          "gold_ore", "deepslate_gold_ore", "raw_gold_block", "gold_block",
+          "redstone_ore", "deepslate_redstone_ore", "redstone_block",
+          "emerald_ore", "deepslate_emerald_ore", "emerald_block",
+          "lapis_ore", "deepslate_lapis_ore", "lapis_block",
+          "diamond_ore", "deepslate_diamond_ore", "diamond_block",
+          "nether_quartz_ore", "quartz_block",
+          "ancient_debris", "netherite_block", "amethyst_block",
+          "white_wool", "orange_wool", "magenta_wool", "light_blue_wool", "yellow_wool", "lime_wool", "pink_wool", "gray_wool", "light_gray_wool", "cyan_wool", "purple_wool", "blue_wool", "brown_wool", "green_wool", "red_wool", "black_wool",
+          "white_concrete", "orange_concrete", "magenta_concrete", "light_blue_concrete", "yellow_concrete", "lime_concrete", "pink_concrete", "gray_concrete", "light_gray_concrete", "cyan_concrete", "purple_concrete", "blue_concrete", "brown_concrete", "green_concrete", "red_concrete", "black_concrete",
+          "glass", "tinted_glass", "white_stained_glass", "orange_stained_glass", "magenta_stained_glass", "light_blue_stained_glass",
+          "netherrack", "soul_sand", "soul_soil", "basalt", "polished_basalt", "blackstone", "glowstone", "magma_block",
+          "end_stone", "end_stone_bricks", "purpur_block", "purpur_pillar",
+          "crafting_table", "furnace", "blast_furnace", "smoker", "cartography_table", "fletching_table", "grindstone", "smithing_table", "stonecutter", "loom",
+          "chest", "barrel", "shulker_box", "ender_chest",
+          "bookshelf", "chiseled_bookshelf", "lectern", "jukebox", "note_block",
+          "pumpkin", "carved_pumpkin", "jack_o_lantern", "melon", "hay_block", "honey_block", "slime_block",
+          "beacon", "sea_lantern", "prismarine",
+          "tnt", "sponge", "respawn_anchor",
+          "dispenser", "dropper", "observer", "piston", "sticky_piston", "redstone_lamp"
+        ];
+
+        // Updated Minecraft Sound IDs
+        const DEFAULT_SOUNDS = [
+          { id: "minecraft:harp", name: "Harp (Piano)", iconBlock: "oak_planks" },
+          { id: "minecraft:bass", name: "Bass (String)", iconBlock: "oak_log" },
+          { id: "minecraft:snare", name: "Snare Drum", iconBlock: "sand" },
+          { id: "minecraft:hat", name: "Hi-Hat", iconBlock: "glass" },
+          { id: "minecraft:basedrum", name: "Bass Drum", iconBlock: "stone" },
+          { id: "minecraft:bell", name: "Bell", iconBlock: "gold_block" },
+          { id: "minecraft:flute", name: "Flute", iconBlock: "clay" },
+          { id: "minecraft:chime", name: "Chime", iconBlock: "packed_ice" },
+          { id: "minecraft:guitar", name: "Guitar", iconBlock: "white_wool" },
+          { id: "minecraft:xylophone", name: "Xylophone", iconBlock: "bone_block" },
+          { id: "minecraft:iron_xylophone", name: "Iron Xylophone", iconBlock: "iron_block" },
+          { id: "minecraft:cow_bell", name: "Cow Bell", iconBlock: "soul_sand" },
+          { id: "minecraft:didgeridoo", name: "Didgeridoo", iconBlock: "pumpkin" },
+          { id: "minecraft:bit", name: "Bit", iconBlock: "emerald_block" },
+          { id: "minecraft:banjo", name: "Banjo", iconBlock: "hay_block" },
+          { id: "minecraft:pling", name: "Pling", iconBlock: "glowstone" },
+        ];
+
+        // --- Components ---
+
+        const Toast = ({ message, isVisible, onClose, type = "success" }) => {
+          useEffect(() => {
+            if (isVisible) {
+              const timer = setTimeout(onClose, 3000);
+              return () => clearTimeout(timer);
+            }
+          }, [isVisible, onClose]);
+
+          return (
+            <div 
+              className={`
+                fixed bottom-8 left-1/2 -translate-x-1/2 z-[100]
+                flex items-center gap-3 px-6 py-3 rounded-full shadow-2xl backdrop-blur-md
+                transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1)
+                ${isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-8 opacity-0 scale-90 pointer-events-none'}
+                ${type === 'success' ? 'bg-white/90 text-black dark:bg-[#333]/90 dark:text-white' : 'bg-red-500/90 text-white'}
+              `}
+            >
+              <div className={`p-1 rounded-full ${type === 'success' ? 'bg-green-500 text-white' : 'bg-white/20'}`}>
+                {type === 'success' ? <Check size={14} strokeWidth={3} /> : <X size={14} strokeWidth={3} />}
+              </div>
+              <span className="font-medium text-sm pr-1">{message}</span>
+            </div>
+          );
+        };
+
+        const BlockIcon = ({ blockName, size = "md", className = "" }) => {
+          const [error, setError] = useState(false);
+          const src = getTextureUrl(blockName);
+          
+          const sizeClass = size === "lg" ? "w-16 h-16" : size === "sm" ? "w-8 h-8" : "w-12 h-12";
+          const initials = blockName.slice(0, 2).toUpperCase();
+          const getColor = (str) => {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+            return '#' + '00000'.substring(0, 6 - c.length) + c;
+          };
+
+          return (
+            <div className={`relative flex items-center justify-center rounded-2xl overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-sm border border-black/5 dark:border-white/5 ${sizeClass} ${className}`}>
+              {!error ? (
+                <img src={src} alt={blockName} className="w-full h-full object-cover rendering-pixelated" onError={() => setError(true)} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center font-bold text-xs opacity-50 select-none" style={{backgroundColor: `${getColor(blockName)}20`, color: getColor(blockName)}}>
+                  {initials}
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        const SoundSearchInput = ({ value, onChange, darkMode, t }) => {
+          const [showSuggestions, setShowSuggestions] = useState(false);
+          const wrapperRef = useRef(null);
+
+          const suggestions = DEFAULT_SOUNDS.filter(s => 
+            s.id.toLowerCase().includes(value.toLowerCase()) || 
+            s.name.toLowerCase().includes(value.toLowerCase())
+          );
+
+          useEffect(() => {
+            const handleClickOutside = (e) => {
+              if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+                setShowSuggestions(false);
+              }
+            };
+            document.addEventListener("mousedown", handleClickOutside);
+            return () => document.removeEventListener("mousedown", handleClickOutside);
+          }, []);
+
+          const handleSelect = (soundId) => {
+            onChange(soundId);
+            setShowSuggestions(false);
+          };
+
+          const currentIconBlock = DEFAULT_SOUNDS.find(s => s.id === value)?.iconBlock || 'diamond_block';
+
+          return (
+            <div className="relative" ref={wrapperRef}>
+              <div className={`flex items-center gap-3 w-full p-3 rounded-2xl border transition-all ${darkMode ? 'bg-white/5 border-white/10 focus-within:bg-white/10 focus-within:border-blue-500/50' : 'bg-gray-50 border-black/5 focus-within:bg-white focus-within:border-blue-500/50 focus-within:shadow-sm'}`}>
+                <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
+                   <BlockIcon blockName={currentIconBlock} size="sm" />
+                </div>
+                <input 
+                  type="text"
+                  value={value}
+                  onChange={(e) => { onChange(e.target.value); setShowSuggestions(true); }}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder="minecraft:harp"
+                  className="flex-1 bg-transparent outline-none text-sm font-mono placeholder-opacity-30"
+                />
+                {value && (
+                  <button onClick={() => onChange('')} className="p-1 rounded-full opacity-30 hover:opacity-100 transition-opacity">
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {showSuggestions && suggestions.length > 0 && (
+                <div className={`absolute z-50 left-0 right-0 mt-2 p-1 rounded-2xl shadow-xl max-h-60 overflow-y-auto border animate-in fade-in slide-in-from-top-1 ${darkMode ? 'bg-[#1c1c1e] border-white/10' : 'bg-white border-black/5'}`}>
+                  {suggestions.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => handleSelect(s.id)}
+                      className={`w-full flex items-center gap-3 p-2 rounded-xl text-left transition-colors ${darkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`}
+                    >
+                      <div className="w-8 h-8 flex-shrink-0">
+                        <BlockIcon blockName={s.iconBlock} size="sm" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold truncate">{s.name}</div>
+                        <div className="text-[10px] opacity-50 truncate font-mono">{s.id}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        };
+
+        const FormattedNumberInput = ({ value, onChange, min, max, step, decimals, darkMode }) => {
+          const [displayValue, setDisplayValue] = useState(Number(value).toFixed(decimals));
+
+          useEffect(() => {
+            setDisplayValue(Number(value).toFixed(decimals));
+          }, [value, decimals]);
+
+          const handleBlur = () => {
+            let num = parseFloat(displayValue);
+            if (isNaN(num)) num = min;
+            if (num < min) num = min;
+            if (num > max) num = max;
+            const formatted = num.toFixed(decimals);
+            setDisplayValue(formatted);
+            onChange(parseFloat(formatted));
+          };
+
+          const handleKeyDown = (e) => {
+            if (e.key === 'Enter') e.target.blur();
+          };
+
+          return (
+            <input 
+              type="text"
+              value={displayValue}
+              onChange={(e) => setDisplayValue(e.target.value)}
+              onBlur={handleBlur}
+              onKeyDown={handleKeyDown}
+              className={`w-16 p-1 text-right text-xs font-mono font-bold bg-transparent border-b outline-none transition-colors ${darkMode ? 'border-white/20 focus:border-blue-500' : 'border-black/20 focus:border-blue-500'}`}
+            />
+          );
+        };
+
+        // --- Modals ---
+
+        const WelcomeScreen = ({ onStart, onImport, darkMode, t }) => {
+          const fileInputRef = useRef(null);
+          return (
+            <div className={`fixed inset-0 z-50 flex items-center justify-center p-6 ${darkMode ? 'bg-[#0f0f11]' : 'bg-[#F2F2F7]'}`}>
+              <div className={`w-full max-w-md p-8 rounded-3xl shadow-2xl flex flex-col items-center text-center transition-all duration-500 animate-[fadeSlideUp_0.6s_ease-out] ${darkMode ? 'bg-[#1c1c1e] border border-white/10' : 'bg-white border border-white'}`}>
+                <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-2xl shadow-blue-500/30 mb-6">
+                  <Box size={40} strokeWidth={1.5} />
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight mb-2">{t('title')}</h1>
+                <p className="text-sm opacity-50 mb-10">{t('subtitle')}</p>
+                <div className="w-full space-y-3">
+                  <button onClick={() => onStart('new')} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2">
+                    <Plus size={20} /> {t('new_project')}
+                  </button>
+                  <button onClick={() => onStart('continue')} className={`w-full py-4 rounded-2xl font-bold border transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2 ${darkMode ? 'border-white/10 hover:bg-white/5' : 'border-black/5 hover:bg-black/5 bg-white'}`}>
+                    <Layers size={20} /> {t('continue_session')}
+                  </button>
+                  <div className="relative pt-4">
+                     <div className="absolute inset-0 flex items-center"><div className={`w-full border-t ${darkMode ? 'border-white/10' : 'border-black/5'}`}></div></div>
+                     <div className="relative flex justify-center"><span className={`px-2 text-xs uppercase tracking-widest opacity-40 ${darkMode ? 'bg-[#1c1c1e]' : 'bg-white'}`}>{t('or_import')}</span></div>
+                  </div>
+                  <div onClick={() => fileInputRef.current.click()} className={`relative w-full h-24 mt-4 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all ${darkMode ? 'border-white/10 hover:border-white/20' : 'border-black/10 hover:border-black/20'}`}>
+                    <Upload size={20} className="opacity-40 mb-2" />
+                    <p className="text-xs font-medium opacity-60">{t('browse_json')}</p>
+                    <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={(e) => e.target.files && onImport(e.target.files[0])} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const AddBlockModal = ({ isOpen, onClose, onSelect, configuredBlocks, darkMode, t }) => {
+          const [query, setQuery] = useState('');
+          const [show, setShow] = useState(false);
+          const [customMode, setCustomMode] = useState(false);
+          const [customId, setCustomId] = useState('');
+
+          useEffect(() => {
+            if (isOpen) { setShow(true); document.body.style.overflow = 'hidden'; } 
+            else { const t = setTimeout(() => setShow(false), 300); document.body.style.overflow = 'unset'; return () => clearTimeout(t); }
+          }, [isOpen]);
+          
+          if (!show && !isOpen) return null;
+          const filtered = BLOCK_DATABASE.filter(b => b.includes(query.toLowerCase()));
+
+          const handleCustomSubmit = () => {
+            if (!customId) return;
+            let finalId = customId.toLowerCase().trim();
+            if (finalId.includes(':')) finalId = finalId.split(':')[1];
+            onSelect(finalId);
+            setCustomId('');
+            setCustomMode(false);
+          };
+
+          return (
+            <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity" onClick={onClose} />
+              <div className={`relative w-full max-w-4xl h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isOpen ? 'translate-y-0 scale-100' : 'translate-y-8 scale-95'} ${darkMode ? 'bg-[#1e1e1e] text-white border border-white/10' : 'bg-white text-black border border-black/5'}`}>
+                <div className="p-6 border-b flex items-center justify-between shrink-0 dark:border-white/5 border-black/5">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500"><Grid size={24} /></div>
+                    <div><h2 className="text-xl font-bold tracking-tight">{t('add_block')}</h2><p className="text-sm opacity-50">Select or create</p></div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                     {!customMode ? (
+                        <button onClick={() => setCustomMode(true)} className="px-4 py-2 rounded-xl text-sm font-medium bg-blue-500 text-white shadow-lg hover:bg-blue-600 transition-colors">+ Add Custom</button>
+                     ) : (
+                        <button onClick={() => setCustomMode(false)} className="px-4 py-2 rounded-xl text-sm font-medium hover:bg-white/10 transition-colors">Back to List</button>
+                     )}
+                     <button onClick={onClose} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"><X size={24} /></button>
+                  </div>
+                </div>
+                {customMode ? (
+                  <div className="flex-1 flex flex-col items-center justify-center p-8 animate-in fade-in slide-in-from-right-4">
+                     <div className="w-full max-w-md space-y-6">
+                        <div className="text-center">
+                           <div className="w-20 h-20 mx-auto bg-blue-500/10 text-blue-500 rounded-3xl flex items-center justify-center mb-4"><Box size={40} /></div>
+                           <h3 className="text-2xl font-bold">Custom Block ID</h3><p className="opacity-50">Enter the exact ID from mod or vanilla (e.g. machine_block)</p>
+                        </div>
+                        <div className="space-y-4">
+                           <div className={`p-4 rounded-2xl border flex items-center gap-3 ${darkMode ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'}`}>
+                              <span className="opacity-40 font-mono select-none">minecraft:</span>
+                              <input autoFocus value={customId} onChange={e => setCustomId(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCustomSubmit()} placeholder="your_block_id" className="flex-1 bg-transparent outline-none font-mono"/>
+                           </div>
+                           <button onClick={handleCustomSubmit} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold shadow-xl transition-transform active:scale-95">Add Block</button>
+                        </div>
+                     </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="px-6 py-2 shrink-0">
+                      <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl ${darkMode ? 'bg-white/5' : 'bg-black/5'}`}>
+                        <Search className="opacity-40" size={20} /><input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder={t('search_blocks')} className="flex-1 bg-transparent text-lg outline-none placeholder:opacity-30"/>
+                      </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-6">
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4">
+                        {filtered.map(block => {
+                          const isConfigured = configuredBlocks.has(`minecraft:${block}`);
+                          return (
+                            <button key={block} onClick={() => { if (!isConfigured) onSelect(block); }} disabled={isConfigured} className={`group relative flex flex-col items-center gap-3 p-4 rounded-3xl transition-all duration-300 ${isConfigured ? 'opacity-40 cursor-default grayscale' : (darkMode ? 'hover:bg-white/10 hover:-translate-y-1' : 'hover:bg-gray-100 hover:-translate-y-1')}`}>
+                              <BlockIcon blockName={block} size="md" /><span className="text-xs font-medium truncate w-full text-center opacity-70 group-hover:opacity-100">{block.replace(/_/g, ' ')}</span>
+                              {isConfigured && <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg"><Check size={14} strokeWidth={3} /></div>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        };
+
+        const ExportConsole = ({ isOpen, onClose, data, darkMode, t }) => {
+          const [tab, setTab] = useState('config'); 
+          const [step, setStep] = useState(0); 
+          const [logs, setLogs] = useState([]);
+          const [show, setShow] = useState(false);
+
+          useEffect(() => {
+            if (isOpen) {
+              setShow(true);
+              setStep(1);
+              setLogs([]);
+              let ms = 0;
+              const addLog = (msg) => { setTimeout(() => setLogs(prev => [...prev, msg]), ms); ms += Math.random() * 300 + 100; };
+              addLog(`> ${t('initializing')}`);
+              addLog(`> ${t('validating')}`);
+              addLog(`> ${t('found_entries').replace('{n}', data.length)}`);
+              addLog(`> ${t('serializing')}`);
+              setTimeout(() => setStep(2), 2000);
+            } else {
+              const t = setTimeout(() => setShow(false), 300); 
+              return () => clearTimeout(t);
+            }
+          }, [isOpen, data, t]);
+
+          const downloadFile = (filename, content) => {
+            const blob = new Blob([content], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+          };
+
+          const copyToClipboard = (content) => {
+            navigator.clipboard.writeText(content).then(() => {});
+          };
+
+          const getSoundsJson = () => {
+            const sounds = {};
+            const customEntries = data.filter(m => m.isCustomSound);
+            customEntries.forEach(m => {
+              const soundId = m.sound.sound;
+              let key = soundId;
+              if (key.includes(':')) key = key.split(':')[1];
+              if (!sounds[key]) {
+                sounds[key] = { category: "record", sounds: [key.replace(/\./g, '/')] };
+              }
+            });
+            return JSON.stringify(sounds, null, 2);
+          };
+
+          const getConfigJson = () => {
+            const cleanData = data.map(({ isCustomSound, ...rest }) => rest);
+            return JSON.stringify({ mappings: cleanData }, null, 2);
+          };
+
+          if (!show && !isOpen) return null;
+
+          return (
+            <div className={`fixed inset-0 z-[60] flex items-center justify-center p-4 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-xl" onClick={onClose} />
+              <div className={`relative w-full max-w-2xl h-[70vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isOpen ? 'translate-y-0 scale-100' : 'translate-y-8 scale-95'} ${darkMode ? 'bg-[#0f0f11] border border-white/10' : 'bg-[#1a1a1a] border border-white/10'}`}>
+                <div className="h-14 bg-[#2a2a2a] flex items-center px-6 gap-6 border-b border-white/5">
+                  <div className="flex gap-2">
+                     <div className="w-3 h-3 rounded-full bg-red-500/80 cursor-pointer hover:bg-red-500" onClick={onClose}/>
+                     <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                     <div className="w-3 h-3 rounded-full bg-green-500/80" />
+                  </div>
+                  <div className="flex gap-1 bg-black/20 p-1 rounded-lg">
+                     <button onClick={() => setTab('config')} className={`px-4 py-1 rounded-md text-xs font-bold transition-all ${tab === 'config' ? 'bg-blue-600 text-white' : 'text-white/40 hover:text-white'}`}>Config</button>
+                     <button onClick={() => setTab('resourcepack')} className={`px-4 py-1 rounded-md text-xs font-bold transition-all ${tab === 'resourcepack' ? 'bg-purple-600 text-white' : 'text-white/40 hover:text-white'}`}>Resource Pack</button>
+                  </div>
+                </div>
+                <div className="flex-1 bg-[#0f0f11] p-6 overflow-y-auto font-mono text-xs text-white/80 shadow-inner">
+                   {tab === 'config' ? (
+                     <pre>{getConfigJson()}</pre>
+                   ) : (
+                     <div className="space-y-8">
+                        <div>
+                          <div className="flex justify-between items-center mb-2 text-purple-400 font-bold">
+                            <span>assets/minecraft/sounds.json</span>
+                          </div>
+                          <pre className="p-4 bg-black/30 rounded-xl border border-white/5">{getSoundsJson()}</pre>
+                        </div>
+                        <div className="p-4 bg-blue-900/20 text-blue-200 rounded-xl border border-blue-500/30">
+                           <p className="mb-2 font-bold">{t('instructions')}:</p>
+                           <ul className="list-disc list-inside space-y-1 opacity-80" dangerouslySetInnerHTML={{__html: `
+                             <li>${t('step1')}</li>
+                             <li>${t('step2')}</li>
+                             <li>${t('step3')}</li>
+                             <li>${t('step4')}</li>
+                           `}} />
+                        </div>
+                     </div>
+                   )}
+                </div>
+                <div className="p-4 bg-[#1a1a1a] border-t border-white/5 flex gap-3">
+                  {tab === 'config' ? (
+                    <>
+                      <button onClick={() => copyToClipboard(getConfigJson())} className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 border border-white/5"><Copy size={18} /> {t('export_config')}</button>
+                      <button onClick={() => downloadFile("notebetterfabric.json", getConfigJson())} className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/40"><Save size={18} /> {t('download_config')}</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => copyToClipboard(getSoundsJson())} className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 border border-white/5"><Copy size={18} /> {t('export_sounds')}</button>
+                      <button onClick={() => downloadFile("sounds.json", getSoundsJson())} className="flex-1 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-900/40"><Save size={18} /> {t('download_sounds')}</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        // --- Main Application ---
+        const App = () => {
+          const [appState, setAppState] = useState('welcome');
+          const [mappings, setMappings] = useState([]);
+          const [viewMode, setViewMode] = useState('grid');
+          const [selectedBlockIds, setSelectedBlockIds] = useState(new Set()); 
+          const [darkMode, setDarkMode] = useState(true);
+          const [lang, setLang] = useState('ja');
+          const [isExportConsoleOpen, setIsExportConsoleOpen] = useState(false);
+          const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+          const [toast, setToast] = useState({ show: false, msg: '', type: 'success' });
+
+          // Localization Helper
+          const t = (key) => TRANSLATIONS[lang][key] || key;
+
+          // Inspector State (Synced with selection)
+          const [editSound, setEditSound] = useState('');
+          const [editVol, setEditVol] = useState(3.0);
+          const [editPitch, setEditPitch] = useState(1.0);
+          const [editIsCustom, setEditIsCustom] = useState(false);
+
+          // Sync Inspector with Selection
+          useEffect(() => {
+            if (selectedBlockIds.size > 0) {
+              // Use the last selected item as the source of truth for the inspector values
+              const lastId = Array.from(selectedBlockIds).pop();
+              const m = mappings.find(item => item.block === lastId);
+              if (m) {
+                setEditSound(m.sound.sound);
+                setEditVol(m.sound.volume);
+                setEditPitch(m.sound.pitch);
+                setEditIsCustom(!!m.isCustomSound);
+              }
+            }
+          }, [selectedBlockIds, mappings]);
+
+          // Persistence
+          useEffect(() => {
+            const savedData = localStorage.getItem('nb_pure_data');
+            if (savedData) { /* Ready state */ }
+          }, []);
+          useEffect(() => { if (appState === 'studio') localStorage.setItem('nb_pure_data', JSON.stringify(mappings)); }, [mappings, appState]);
+          useEffect(() => { if (darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }, [darkMode]);
+
+          const showToast = (msg, type = 'success') => setToast({ show: true, msg, type });
+
+          // -- Actions --
+
+          const handleStart = (mode) => {
+            if (mode === 'new') { setMappings([]); setAppState('studio'); showToast(t('new_project')); } 
+            else {
+              const saved = localStorage.getItem('nb_pure_data');
+              if (saved) { try { setMappings(JSON.parse(saved)); showToast("Session restored"); } catch { showToast("Failed to restore", "error"); } }
+              setAppState('studio');
+            }
+          };
+
+          const handleImport = (file) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const json = JSON.parse(e.target.result);
+                if (!json.mappings || !Array.isArray(json.mappings)) throw new Error("Invalid format");
+                setMappings(json.mappings); setAppState('studio'); showToast(t('imported').replace('{n}', json.mappings.length));
+              } catch { showToast(t('invalid_json'), "error"); }
+            };
+            reader.readAsText(file);
+          };
+
+          const handleAddBlock = (blockName) => {
+            const fullId = `minecraft:${blockName}`;
+            const newEntry = { 
+              block: fullId, 
+              sound: { sound: "minecraft:harp", volume: 3.0, pitch: 1.0 },
+              isCustomSound: false 
+            };
+            setMappings(prev => [...prev, newEntry]);
+            setIsAddModalOpen(false);
+            
+            // Select and setup inspector
+            const newSet = new Set([fullId]);
+            setSelectedBlockIds(newSet);
+            
+            showToast(t('added').replace('{name}', blockName.replace(/_/g, ' ')));
+          };
+
+          // Immediate Update Function
+          const updateSelectedBlocks = (updates) => {
+            if (selectedBlockIds.size === 0) return;
+            setMappings(prev => prev.map(m => {
+              if (selectedBlockIds.has(m.block)) {
+                return {
+                  ...m,
+                  sound: {
+                    ...m.sound,
+                    ...(updates.sound !== undefined ? { sound: updates.sound } : {}),
+                    ...(updates.volume !== undefined ? { volume: updates.volume } : {}),
+                    ...(updates.pitch !== undefined ? { pitch: updates.pitch } : {})
+                  },
+                  ...(updates.isCustomSound !== undefined ? { isCustomSound: updates.isCustomSound } : {})
+                };
+              }
+              return m;
+            }));
+          };
+
+          // Input Handlers (Call update directly)
+          const handleSoundChange = (val) => { setEditSound(val); updateSelectedBlocks({ sound: val }); };
+          const handlePitchChange = (val) => { setEditPitch(val); updateSelectedBlocks({ pitch: val }); };
+          const handleVolChange = (val) => { setEditVol(val); updateSelectedBlocks({ volume: val }); };
+          const handleCustomToggle = (val) => { setEditIsCustom(val); updateSelectedBlocks({ isCustomSound: val }); };
+
+          const handleDeleteConfig = () => {
+            if (selectedBlockIds.size === 0) return;
+            setMappings(prev => prev.filter(m => !selectedBlockIds.has(m.block)));
+            showToast(t('removed').replace('{n}', selectedBlockIds.size), "error");
+            setSelectedBlockIds(new Set());
+          };
+
+          const toggleSelection = (fullId, multi) => {
+            const newSet = new Set(multi ? selectedBlockIds : []);
+            if (newSet.has(fullId)) newSet.delete(fullId); else newSet.add(fullId);
+            setSelectedBlockIds(newSet);
+          };
+
+          const deleteSingle = (id, e) => {
+            e.stopPropagation();
+            setMappings(prev => prev.filter(m => m.block !== id));
+            if (selectedBlockIds.has(id)) {
+              const newSet = new Set(selectedBlockIds);
+              newSet.delete(id);
+              setSelectedBlockIds(newSet);
+            }
+            showToast(t('removed').replace('{n}', 1), "error");
+          };
+
+          const handleBackgroundClick = (e) => { setSelectedBlockIds(new Set()); };
+
+          const selectedCount = selectedBlockIds.size;
+          const isInspectorVisible = selectedCount > 0;
+
+          if (appState === 'welcome') return <WelcomeScreen onStart={handleStart} onImport={handleImport} darkMode={darkMode} t={t} />;
+
+          return (
+            <div className={`h-screen w-full flex flex-col transition-colors duration-500 font-sans overflow-hidden ${darkMode ? 'bg-[#0f0f11] text-white' : 'bg-[#F2F2F7] text-[#1D1D1F]'}`}>
+              <style>{`
+                @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+                .scroll-hide::-webkit-scrollbar { display: none; }
+              `}</style>
+              <Toast isVisible={toast.show} message={toast.msg} type={toast.type} onClose={() => setToast(prev => ({ ...prev, show: false }))} />
+              <ExportConsole isOpen={isExportConsoleOpen} onClose={() => setIsExportConsoleOpen(false)} data={mappings} darkMode={darkMode} t={t} />
+
+              {/* Header */}
+              <header className={`h-20 px-8 flex items-center justify-between shrink-0 sticky top-0 z-30 backdrop-blur-xl border-b transition-colors duration-500 ${darkMode ? 'bg-[#0f0f11]/80 border-white/5' : 'bg-white/80 border-black/5'}`}>
+                <div className="flex items-center gap-5 cursor-pointer" onClick={() => setAppState('welcome')}>
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white shadow-xl shadow-blue-500/20"><Box size={20} strokeWidth={2.5} /></div>
+                  <div><h1 className="font-bold text-xl tracking-tight leading-tight">{t('title')}</h1><p className="text-[10px] font-medium opacity-50 uppercase tracking-widest">{t('subtitle')}</p></div>
+                </div>
+                <div className="flex items-center gap-3">
+                   <div className={`flex items-center p-1.5 rounded-2xl border ${darkMode ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'}`}>
+                    <button onClick={() => setViewMode('list')} className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? (darkMode ? 'bg-white/10 text-white shadow-md' : 'bg-white shadow-md text-black') : 'opacity-40 hover:opacity-70'}`}><ListIcon size={18} /></button>
+                    <button onClick={() => setViewMode('grid')} className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? (darkMode ? 'bg-white/10 text-white shadow-md' : 'bg-white shadow-md text-black') : 'opacity-40 hover:opacity-70'}`}><Grid size={18} /></button>
+                  </div>
+                  <div className="w-px h-6 bg-current opacity-10 mx-2" />
+                  <button onClick={() => setLang(l => l === 'en' ? 'ja' : 'en')} className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${darkMode ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}>{lang === 'en' ? 'EN' : 'JA'}</button>
+                  <button onClick={() => setDarkMode(!darkMode)} className={`p-3 rounded-full transition-all ${darkMode ? 'hover:bg-white/10 text-yellow-400' : 'hover:bg-black/5 text-slate-600'}`}>{darkMode ? <Sun size={20} /> : <Moon size={20} />}</button>
+                  <button onClick={() => setIsExportConsoleOpen(true)} className="relative flex items-center gap-2 pl-5 pr-6 py-3 rounded-full text-sm font-bold transition-all bg-blue-600 text-white hover:bg-blue-500 hover:scale-105 shadow-lg shadow-blue-500/30"><Download size={18} strokeWidth={2.5} /><span>{t('export')}</span></button>
+                </div>
+              </header>
+
+              {/* Main Content */}
+              <div className="flex-1 flex overflow-hidden relative" onClick={handleBackgroundClick}>
+                <main className="flex-1 overflow-y-auto p-8 scroll-hide">
+                  {mappings.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center opacity-40 animate-[fadeSlideUp_0.5s_ease-out]">
+                      <div className="w-24 h-24 rounded-full bg-current opacity-5 flex items-center justify-center mb-6"><Box size={48} strokeWidth={1.5} /></div>
+                      <p className="text-2xl font-bold tracking-tight mb-2">{t('no_blocks')}</p><p className="text-base">{t('tap_plus')}</p>
+                    </div>
+                  ) : (
+                     <div className={`gap-6 pb-32 ${viewMode === 'grid' ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'flex flex-col max-w-3xl mx-auto'}`}>
+                        {mappings.map((m, i) => {
+                          const blockName = m.block.replace('minecraft:', '');
+                          const isSelected = selectedBlockIds.has(m.block);
+                          return (
+                            <div
+                              key={m.block}
+                              onClick={(e) => { e.stopPropagation(); toggleSelection(m.block, false); }}
+                              style={{ animationDelay: `${i * 30}ms` }}
+                              className={`
+                                group relative rounded-3xl transition-all duration-300 animate-[fadeSlideUp_0.5s_ease-out_both] cursor-pointer select-none
+                                ${viewMode === 'grid' 
+                                  ? 'flex flex-col items-center gap-4 p-5' 
+                                  : 'flex flex-row items-center gap-6 p-4 px-6 border'} 
+                                ${isSelected 
+                                  ? (darkMode ? 'bg-blue-600/20 ring-2 ring-blue-500 shadow-2xl z-10 border-transparent' : 'bg-blue-50 ring-2 ring-blue-500 shadow-2xl z-10 border-transparent') 
+                                  : (darkMode ? 'bg-[#18181b] border-white/5 hover:bg-[#202023] hover:shadow-xl hover:scale-[1.02]' : 'bg-white border-black/5 hover:bg-gray-50 hover:shadow-xl hover:scale-[1.02]')
+                                }
+                              `}
+                            >
+                              {/* Selection Checkbox */}
+                              <div onClick={(e) => { e.stopPropagation(); toggleSelection(m.block, true); }} className={`absolute top-4 left-4 z-20 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'border-current opacity-10 group-hover:opacity-100 hover:scale-110'}`}>
+                                {isSelected && <Check size={14} strokeWidth={3} />}
+                              </div>
+
+                              {/* Custom Sound Badge */}
+                              {m.isCustomSound && (
+                                <div className={`absolute top-4 right-4 z-10 w-3 h-3 rounded-full bg-purple-500 shadow-lg shadow-purple-500/50 ${isSelected ? 'opacity-100' : 'opacity-50 group-hover:opacity-100'}`} />
+                              )}
+
+                              {/* Hover Delete Button */}
+                              <button 
+                                onClick={(e) => deleteSingle(m.block, e)}
+                                className={`absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg transition-all transform scale-0 group-hover:scale-100 hover:bg-red-600 ${m.isCustomSound ? 'mr-6' : ''}`}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+
+                              <BlockIcon blockName={blockName} size={viewMode === 'grid' ? "lg" : "md"} className="shadow-lg transition-all duration-500 flex-shrink-0" />
+                              
+                              <div className={`text-center ${viewMode === 'list' && 'text-left flex-1 min-w-0'}`}>
+                                <div className={`font-bold capitalize opacity-90 truncate ${viewMode === 'list' ? 'text-lg' : 'text-sm'}`}>{blockName.replace(/_/g, ' ')}</div>
+                                {viewMode === 'list' && <div className="text-xs opacity-40 font-mono truncate">{m.block}</div>}
+                                
+                                <div className={`flex items-center gap-1.5 mt-2 text-[11px] font-medium px-3 py-1 rounded-full ${darkMode ? 'bg-white/5 text-white/60' : 'bg-black/5 text-black/60'} ${viewMode === 'list' ? 'w-fit' : 'justify-center mx-auto'}`}>
+                                  <Music size={10} />
+                                  <span className="truncate max-w-[100px]">{m.sound.sound.split('.').pop()}</span>
+                                </div>
+                              </div>
+
+                              {viewMode === 'list' && (
+                                 <div className="flex flex-col items-end gap-1 opacity-60 text-xs font-mono border-l pl-6 border-white/10">
+                                    <div className="flex items-center gap-2"><span>Vol:</span> <span className="font-bold text-blue-400">{Number(m.sound.volume).toFixed(1)}</span></div>
+                                    <div className="flex items-center gap-2"><span>Pitch:</span> <span className="font-bold text-green-400">{Number(m.sound.pitch).toFixed(2)}</span></div>
+                                 </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                     </div>
+                  )}
+                </main>
+
+                <button onClick={(e) => { e.stopPropagation(); setIsAddModalOpen(true); }} className="absolute bottom-8 right-8 w-16 h-16 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-2xl shadow-blue-600/40 flex items-center justify-center transition-transform hover:scale-110 active:scale-95 z-40 group">
+                  <Plus size={32} strokeWidth={2.5} className="group-hover:rotate-90 transition-transform duration-300" />
+                </button>
+
+                {/* Inspector Panel */}
+                <aside onClick={(e) => e.stopPropagation()} className={`absolute inset-y-4 right-4 w-96 rounded-3xl p-8 border flex flex-col overflow-y-auto z-50 shadow-2xl transition-all duration-500 cubic-bezier(0.19, 1, 0.22, 1) ${isInspectorVisible ? 'translate-x-0 opacity-100' : 'translate-x-[110%] opacity-0 pointer-events-none'} ${darkMode ? 'bg-[#1c1c1e]/90 border-white/10 backdrop-blur-2xl' : 'bg-white/90 border-white/40 backdrop-blur-2xl'}`}>
+                  {isInspectorVisible && (
+                    <>
+                      <div className="flex items-center justify-between mb-8">
+                        <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">
+                          {selectedCount > 1 ? t('editing_multiple').replace('{n}', selectedCount) : t('inspector')}
+                        </span>
+                        <button onClick={() => setSelectedBlockIds(new Set())} className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 opacity-50 hover:opacity-100 transition"><X size={20} /></button>
+                      </div>
+
+                      {selectedCount === 1 ? (
+                        <div className="flex flex-col items-center mb-8 animate-[fadeSlideUp_0.4s_0.1s_ease-out_both]">
+                          <div className="relative mb-6 group cursor-pointer">
+                            <BlockIcon blockName={Array.from(selectedBlockIds)[0].replace('minecraft:', '')} className="w-40 h-40 rounded-[2rem] shadow-2xl group-hover:scale-105 transition-transform duration-500" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-[2rem]" />
+                          </div>
+                          <h2 className="text-2xl font-bold capitalize mb-1 text-center tracking-tight">{Array.from(selectedBlockIds)[0].replace('minecraft:', '').replace(/_/g, ' ')}</h2>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center mb-8 animate-[fadeSlideUp_0.4s_0.1s_ease-out_both]">
+                           <div className="w-32 h-32 rounded-[2rem] bg-blue-500/10 flex items-center justify-center text-blue-500 mb-4"><CheckSquare size={64} /></div>
+                           <h2 className="text-xl font-bold text-center">{t('batch_edit')}</h2>
+                           <p className="text-xs opacity-50">{t('editing_multiple').replace('{n}', selectedCount)}</p>
+                        </div>
+                      )}
+
+                      <div className="space-y-8 animate-[fadeSlideUp_0.4s_0.2s_ease-out_both]">
+                        
+                        {/* Custom Sound Toggle - Moved Up */}
+                        <div className="p-4 rounded-2xl border flex items-center justify-between transition-colors bg-white/5 border-white/5 hover:border-blue-500/30 group">
+                           <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-xl transition-colors ${editIsCustom ? 'bg-purple-500 text-white' : 'bg-gray-500/10 text-gray-500'}`}>
+                                <Zap size={18} fill={editIsCustom ? "currentColor" : "none"} />
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold">{t('custom_sound')}</div>
+                                <div className="text-[10px] opacity-50">{t('custom_sound_desc')}</div>
+                              </div>
+                           </div>
+                           <button 
+                              onClick={() => handleCustomToggle(!editIsCustom)}
+                              className={`relative w-12 h-7 rounded-full transition-all duration-300 ${editIsCustom ? 'bg-purple-500' : 'bg-gray-600/30'}`}
+                            >
+                              <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform duration-300 shadow-sm ${editIsCustom ? 'translate-x-5' : 'translate-x-0'}`} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          <label className="text-xs font-bold opacity-60 ml-1 uppercase tracking-wider">{t('sound_event')}</label>
+                          <SoundSearchInput value={editSound} onChange={handleSoundChange} darkMode={darkMode} t={t} />
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center px-1">
+                            <label className="text-xs font-bold opacity-60 uppercase tracking-wider">{t('pitch')}</label>
+                            <FormattedNumberInput 
+                              value={editPitch} onChange={handlePitchChange}
+                              min={0.5} max={2.0} step={0.01} decimals={2} darkMode={darkMode}
+                            />
+                          </div>
+                          <input type="range" min="0.5" max="2.0" step="0.01" value={editPitch} onChange={(e) => handlePitchChange(parseFloat(e.target.value))} className="w-full accent-blue-500 h-2 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer hover:h-2.5 transition-all" />
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-center px-1">
+                            <label className="text-xs font-bold opacity-60 uppercase tracking-wider">{t('volume')}</label>
+                            <FormattedNumberInput 
+                              value={editVol} onChange={handleVolChange}
+                              min={0.0} max={3.0} step={0.1} decimals={1} darkMode={darkMode}
+                            />
+                          </div>
+                          <input type="range" min="0.0" max="3.0" step="0.1" value={editVol} onChange={(e) => handleVolChange(parseFloat(e.target.value))} className="w-full accent-blue-500 h-2 bg-gray-200 dark:bg-gray-800 rounded-lg appearance-none cursor-pointer hover:h-2.5 transition-all" />
+                        </div>
+                      </div>
+
+                      <div className="mt-auto pt-10 flex flex-col gap-3 animate-[fadeSlideUp_0.4s_0.3s_ease-out_both]">
+                        <button onClick={handleDeleteConfig} className="w-full py-4 text-red-500 hover:bg-red-500/5 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center gap-2">
+                          <Trash2 size={20} /> {selectedCount > 1 ? t('remove_all') : t('remove_block')}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </aside>
+              </div>
+              <AddBlockModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSelect={handleAddBlock} configuredBlocks={new Set(mappings.map(m => m.block))} darkMode={darkMode} t={t} />
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
